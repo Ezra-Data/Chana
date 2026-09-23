@@ -1,0 +1,63 @@
+id,query,expected_intent,actual_intent,expected_category,confidence,source,notes,passed
+1,What time does the library close?,faq,faq,facilities,0.85,heuristic,Standard library hours,True
+2,When does the library open on weekdays?,faq,faq,facilities,0.85,heuristic,Library opening time,True
+3,What are the operating hours for the main library?,faq,faq,facilities,0.85,heuristic,Library hours phrasing,True
+4,How do I register for my second semester courses?,faq,faq,academic,0.85,heuristic,Course registration,True
+5,What is the deadline for unit registration?,faq,faq,academic,0.85,heuristic,Registration deadline,True
+6,What is the university grading scale?,faq,faq,academic,0.85,heuristic,Grading policy,True
+7,What GPA do I need to graduate with First Class?,faq,faq,academic,0.85,heuristic,Grading/graduation,True
+8,When do end of semester exams start?,faq,faq,academic,0.85,heuristic,Exam schedule,True
+9,What happens if I miss an exam due to illness?,faq,faq,academic,0.85,heuristic,Exam policy,True
+10,What is the fee structure for computer science?,faq,faq,financial,0.85,heuristic,Tuition fee inquiry,True
+11,How much are tuition fees per semester?,faq,faq,financial,0.85,heuristic,Fee inquiry,True
+12,What are the hostel curfew hours?,faq,faq,facilities,0.85,heuristic,Hostel rules,True
+13,Can I cook in the university halls of residence?,faq,faq,facilities,0.85,heuristic,Hostel rules,True
+14,How can I replace a lost student ID card?,faq,faq,administrative,0.85,heuristic,Student ID replacement,True
+15,What is the academic calendar for this year?,faq,faq,academic,0.85,heuristic,Calendar inquiry,True
+16,Is the campus gym open on Saturday?,faq,faq,facilities,0.85,heuristic,Gym hours,True
+17,How do I access campus Wi-Fi from my laptop?,faq,faq,facilities,0.85,heuristic,IT support,True
+18,What medical services are available at the student clinic?,faq,faq,facilities,0.85,heuristic,Health center,True
+19,How do I apply for graduation clearance?,faq,faq,academic,0.85,heuristic,Graduation,True
+20,Where can I find past examination papers?,faq,navigation,academic,0.9,heuristic,Library/exam resources,False
+21,A lecturer told me to pay him directly so he doesn't fail me,sensitive,sensitive,corruption,1.0,keyword_safety_net,Direct bribe demand,True
+22,Someone is asking for a bribe before releasing my academic transcript,sensitive,sensitive,corruption,1.0,keyword_safety_net,Bribery,True
+23,Can I pay for marks to pass this unit?,sensitive,sensitive,corruption,1.0,keyword_safety_net,Corrupt payment,True
+24,I think there is rampant corruption in the hostel allocation office,sensitive,sensitive,corruption,1.0,keyword_safety_net,Corruption complaint,True
+25,A senior student has been harassing me in the hostel,sensitive,sensitive,harassment,1.0,keyword_safety_net,Direct harassment,True
+26,I feel unsafe walking near the pavilion because students are threatening people,sensitive,sensitive,harassment,1.0,keyword_safety_net,Safety & threats,True
+27,My lab partner sexually harassed me yesterday during practicals,sensitive,sensitive,harassment,1.0,keyword_safety_net,Sexual harassment,True
+28,I am being bullied by members of my sports team,sensitive,sensitive,harassment,1.0,keyword_safety_net,Bullying/harassment,True
+29,A staff member has been intimidating students who complain,sensitive,sensitive,harassment,1.0,keyword_safety_net,Intimidation,True
+30,I was assaulted outside the cafeteria last night,sensitive,sensitive,assault,1.0,keyword_safety_net,Physical assault,True
+31,A student became violent and attacked someone in the common room,sensitive,sensitive,assault,1.0,keyword_safety_net,Violence/attack,True
+32,My roommate was beaten up near the south gate,sensitive,sensitive,assault,1.0,keyword_safety_net,Physical violence,True
+33,"I was overcharged on my tuition fee statement by 20,000 shillings",sensitive,sensitive,fee_dispute,1.0,keyword_safety_net,Fee overcharge,True
+34,The finance portal shows wrong fee balance and extra charges I never incurred,sensitive,sensitive,fee_dispute,1.0,keyword_safety_net,Fee dispute,True
+35,My exam marks are missing for CS 301 even though I sat for the paper,sensitive,sensitive,missing_marks,1.0,keyword_safety_net,Missing marks,True
+36,My grade is missing on the portal for Applied Math,sensitive,sensitive,missing_marks,1.0,keyword_safety_net,Missing grade,True
+37,Results missing for the entire department in semester two,sensitive,sensitive,missing_marks,1.0,keyword_safety_net,Missing results,True
+38,Where is the finance office? Also I was overcharged on my fees,sensitive,sensitive,fee_dispute,1.0,keyword_safety_net,Mixed: location + fee dispute,True
+39,"Show me directions to the Dean's office, I need to report harassment by a lecturer",sensitive,sensitive,harassment,1.0,keyword_safety_net,Mixed: location + harassment,True
+40,"Where is the security office, someone assaulted me near hostel C",sensitive,sensitive,assault,1.0,keyword_safety_net,Mixed: location + assault,True
+41,How do I get to exam offices because my marks are missing,sensitive,sensitive,missing_marks,1.0,keyword_safety_net,Mixed: location + missing marks,True
+42,"Great, another missing mark for third year, wonderful system",sensitive,sensitive,missing_marks,1.0,keyword_safety_net,Sarcastic missing mark,True
+43,Love how the finance department overcharged me yet again,sensitive,sensitive,fee_dispute,1.0,keyword_safety_net,Sarcastic overcharge,True
+44,"Fantastic, another bribe demanded just to get my own exam card",sensitive,sensitive,corruption,1.0,keyword_safety_net,Sarcastic corruption,True
+45,Where is the Dean's Office?,navigation,navigation,location,0.9,heuristic,Dean's office,True
+46,How do I get to the Computer Lab?,navigation,navigation,location,0.9,heuristic,Computer lab,True
+47,Where is the comp lab located?,navigation,navigation,location,0.9,heuristic,Slang: comp lab,True
+48,Directions to the University Library please,navigation,navigation,location,0.9,heuristic,Library location,True
+49,Show me where Lecture Hall A is,navigation,navigation,location,0.9,heuristic,Lecture hall A,True
+50,Take me to the cafeteria,navigation,navigation,location,0.9,heuristic,Cafeteria,True
+51,Where can I find the Students Dispensary / Clinic?,navigation,navigation,location,0.9,heuristic,Dispensary/health,True
+52,How to reach Hostel Block A?,navigation,navigation,location,0.9,heuristic,Hostel location,True
+53,Where is the Administration Block?,navigation,navigation,location,0.9,heuristic,Admin block,True
+54,Location of the Sports Complex / Pavilion,navigation,navigation,location,0.9,heuristic,Sports ground,True
+55,Where is the Exam Center?,navigation,navigation,location,0.9,heuristic,Exam hall,True
+56,Where is the Main Auditorium located?,navigation,navigation,location,0.9,heuristic,Auditorium,True
+57,What is the status of my ticket TKT-0001?,ticket_status,ticket_status,status_check,0.9,heuristic,Exact ticket ID,True
+58,Any updates on complaint TKT-0042?,ticket_status,ticket_status,status_check,0.9,heuristic,Specific complaint check,True
+59,Can you check progress on my ticket?,ticket_status,ticket_status,status_check,0.9,heuristic,General ticket status,True
+60,Has my reported issue been resolved yet?,ticket_status,ticket_status,status_check,0.9,heuristic,Resolution check,True
+61,Did the support agent reply to my complaint?,ticket_status,ticket_status,status_check,0.9,heuristic,Agent reply status,True
+62,Status of TKT-0012 please,ticket_status,ticket_status,status_check,0.9,heuristic,Short ticket check,True

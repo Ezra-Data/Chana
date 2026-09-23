@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Styles ─────────────────────────────────────────── */
+
+:root {
+  --cream-bg: #FFF8F0;
+  --cream-darker: #F5EDE3;
+  --green-primary: #1B4332;
+  --green-accent: #2D6A4F;
+  --green-mid: #40916C;
+  --green-light: #52B788;
+  --green-pale: #B7E4C7;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--cream-bg);
+  color: #1A1A2E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--green-mid);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--green-accent);
+}
+
+/* ─── Glassmorphism ───────────────────────────────────────── */
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/40 rounded-2xl shadow-glass;
+  }
+
+  .glass-card-green {
+    @apply bg-campus-700/90 backdrop-blur-xl border border-campus-600/50 rounded-2xl shadow-glass text-white;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-campus-700 to-campus-600 text-white font-semibold 
+           px-6 py-3 rounded-xl transition-all duration-300 
+           hover:from-campus-600 hover:to-campus-500 hover:shadow-card-hover 
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-cream-200 text-campus-700 font-semibold 
+           px-6 py-3 rounded-xl transition-all duration-300 
+           hover:bg-cream-300 hover:shadow-card 
+           active:scale-[0.98] border border-campus-100/30;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold 
+           px-6 py-3 rounded-xl transition-all duration-300 
+           hover:from-red-500 hover:to-red-400 hover:shadow-card-hover 
+           active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply text-campus-600 font-medium px-4 py-2 rounded-lg transition-all duration-200 
+           hover:bg-campus-50 active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white/70 border border-cream-300 
+           text-gray-800 placeholder-gray-400
+           focus:outline-none focus:ring-2 focus:ring-campus-400/50 focus:border-campus-400
+           transition-all duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide;
+  }
+
+  .badge-open {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-in-progress {
+    @apply badge bg-blue-100 text-blue-700;
+  }
+
+  .badge-resolved {
+    @apply badge bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-critical {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-high {
+    @apply badge bg-orange-100 text-orange-700;
+  }
+
+  .badge-medium {
+    @apply badge bg-yellow-100 text-yellow-700;
+  }
+
+  .badge-low {
+    @apply badge bg-gray-100 text-gray-600;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-cream-200/50 
+           transition-all duration-300 hover:shadow-card-hover;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+           transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-link-active {
+    @apply sidebar-link bg-campus-700 text-white shadow-glass;
+  }
+
+  .sidebar-link-inactive {
+    @apply sidebar-link text-campus-700/70 hover:bg-campus-50 hover:text-campus-700;
+  }
+
+  /* Chat bubbles */
+  .chat-bubble-user {
+    @apply bg-campus-700 text-white rounded-2xl rounded-br-md px-4 py-3 max-w-[80%] ml-auto shadow-sm;
+  }
+
+  .chat-bubble-bot {
+    @apply bg-white border border-cream-300 text-gray-800 rounded-2xl rounded-bl-md px-4 py-3 max-w-[80%] shadow-sm;
+  }
+
+  /* Typing indicator */
+  .typing-dot {
+    @apply w-2 h-2 bg-campus-400 rounded-full animate-pulse-soft;
+  }
+}
+
+/* ─── Gradient Background ─────────────────────────────────── */
+
+.auth-bg {
+  background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 40%, #40916C 70%, #52B788 100%);
+  min-height: 100vh;
+}
+
+.auth-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(183, 228, 199, 0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(255, 248, 240, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ─── Animations ──────────────────────────────────────────── */
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+
+/* Message appear animation */
+@keyframes messageAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message-appear {
+  animation: messageAppear 0.3s ease-out forwards;
+}
