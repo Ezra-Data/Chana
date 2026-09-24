@@ -44,14 +44,14 @@ class Ticket(Base):
     priority = Column(SAEnum(TicketPriority), default=TicketPriority.MEDIUM, nullable=False)
     assigned_agent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     queue_position = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc), nullable=False)
-    first_response_at = Column(DateTime, nullable=True)
-    resolved_at = Column(DateTime, nullable=True)
+    first_response_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
     rating = Column(Integer, nullable=True)  # 1 to 5 stars
     rating_comment = Column(Text, nullable=True)
-    rated_at = Column(DateTime, nullable=True)
+    rated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id], lazy="selectin")
@@ -77,7 +77,7 @@ class TicketMessage(Base):
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null for system messages
     sender_type = Column(SAEnum(SenderType), nullable=False)
     message = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     ticket = relationship("Ticket", back_populates="messages")

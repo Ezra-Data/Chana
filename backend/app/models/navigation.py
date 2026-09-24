@@ -15,7 +15,7 @@ class NavNode(Base):
     description = Column(Text, nullable=True)
     building = Column(String(255), nullable=True)
     floor = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<NavNode id={self.id} name={self.name}>"

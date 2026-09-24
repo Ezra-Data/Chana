@@ -1,6 +1,7 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Boolean, Enum as SAEnum
+from sqlalchemy import DateTime
 from app.database import Base
 
 
@@ -20,7 +21,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(SAEnum(UserRole), default=UserRole.STUDENT, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<User id={self.id} email={self.email} role={self.role}>"
