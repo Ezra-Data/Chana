@@ -47,36 +47,27 @@ async def _migrate_datetime_columns(conn) -> None:
     Idempotent migration: convert any TIMESTAMP WITHOUT TIME ZONE columns to
     TIMESTAMP WITH TIME ZONE so asyncpg does not raise the
     'can't subtract offset-naive and offset-aware datetimes' error.
-    Safe to run repeatedly — it only alters columns still typed WITHOUT TIME ZONE.
+    Queries information_schema so it only alters columns that actually need it,
+    preventing PostgreSQL aborted-transaction errors.
     """
-    statements = [
-        # users
-        "ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
-        # tickets
-        "ALTER TABLE tickets ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE tickets ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE tickets ALTER COLUMN first_response_at TYPE TIMESTAMPTZ USING first_response_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE tickets ALTER COLUMN resolved_at TYPE TIMESTAMPTZ USING resolved_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE tickets ALTER COLUMN rated_at TYPE TIMESTAMPTZ USING rated_at AT TIME ZONE 'UTC'",
-        # ticket_messages
-        "ALTER TABLE ticket_messages ALTER COLUMN timestamp TYPE TIMESTAMPTZ USING timestamp AT TIME ZONE 'UTC'",
-        # chat_sessions
-        "ALTER TABLE chat_sessions ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE chat_sessions ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'",
-        # chat_messages
-        "ALTER TABLE chat_messages ALTER COLUMN timestamp TYPE TIMESTAMPTZ USING timestamp AT TIME ZONE 'UTC'",
-        # knowledge_entries
-        "ALTER TABLE knowledge_entries ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
-        "ALTER TABLE knowledge_entries ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'",
-        # nav_nodes
-        "ALTER TABLE nav_nodes ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
-    ]
-    for sql in statements:
-        try:
-            await conn.execute(text(sql))
-        except Exception:
-            # Column may already be TIMESTAMPTZ or table may not exist yet — ignore
-            pass
+    try:
+        query = text("""
+            SELECT table_name, column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+              AND data_type = 'timestamp without time zone';
+        """)
+        result = await conn.execute(query)
+        columns_to_alter = result.fetchall()
+        for table_name, column_name in columns_to_alter:
+            alter_sql = text(
+                f'ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" '
+                f'TYPE TIMESTAMPTZ USING "{column_name}" AT TIME ZONE \'UTC\''
+            )
+            await conn.execute(alter_sql)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Note during datetime migration check: {e}")
 
 
 async def init_db():
