@@ -1,6 +1,5 @@
-import os
-import shutil
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,14 +111,19 @@ async def delete_entry(
     await db.flush()
 
 
+import os
+import shutil
+
 @router.post("/upload-pdf", response_model=KnowledgeEntryResponse, status_code=201)
 async def upload_pdf(
     file: UploadFile = File(...),
-    category: str = "general",
+    title: Optional[str] = Form(None),
+    category: str = Form("general"),
+    summary: Optional[str] = Form(None),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload a PDF document — extract text, chunk, and embed into the knowledge base."""
+    """Upload a PDF document — extract text, prepend AI summary, and embed into vector knowledge base."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
@@ -132,28 +136,44 @@ async def upload_pdf(
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        # Extract text using PyMuPDF
-        try:
-            import fitz  # pymupdf
-        except ImportError:
-            raise HTTPException(
-                status_code=501,
-                detail="PDF extraction requires PyMuPDF. Install with: pip install pymupdf"
-            )
-        doc = fitz.open(file_path)
+        # Robust text extraction: try PyMuPDF first, then fallback to pypdf
         full_text = ""
-        for page in doc:
-            full_text += page.get_text() + "\n\n"
-        doc.close()
+        extraction_error = None
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(file_path)
+            for page in doc:
+                full_text += page.get_text() + "\n\n"
+            doc.close()
+        except Exception as e1:
+            extraction_error = str(e1)
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(file_path)
+                for page in reader.pages:
+                    full_text += (page.extract_text() or "") + "\n\n"
+            except Exception as e2:
+                extraction_error = f"PyMuPDF error: {e1}; pypdf error: {e2}"
 
         if not full_text.strip():
-            raise HTTPException(status_code=400, detail="Could not extract text from PDF")
+            error_msg = f"Could not extract readable text from PDF. Ensure it contains searchable text (not scanned images). {extraction_error or ''}".strip()
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        # Document title: use admin's custom title or clean filename
+        doc_title = title.strip() if title and title.strip() else file.filename.replace(".pdf", "").replace("_", " ").title()
+
+        # Prepend the admin-provided summary so the chatbot immediately grasps the document's scope
+        content_sections = []
+        if summary and summary.strip():
+            content_sections.append(f"DOCUMENT SCOPE & SUMMARY:\n{summary.strip()}")
+        content_sections.append(f"FULL DOCUMENT TEXT:\n{full_text.strip()}")
+        combined_content = "\n\n".join(content_sections)
 
         # Create DB entry
         entry = KnowledgeEntry(
-            category=category,
-            title=file.filename.replace(".pdf", "").replace("_", " ").title(),
-            content=full_text.strip(),
+            category=category.strip().lower() if category else "general",
+            title=doc_title,
+            content=combined_content,
             source_doc=file.filename,
             created_by=current_user.id,
         )
@@ -161,7 +181,7 @@ async def upload_pdf(
         await db.flush()
         await db.refresh(entry)
 
-        # Embed into ChromaDB
+        # Embed into ChromaDB vector store
         rag_service.add_document(
             entry_id=entry.id,
             title=entry.title,
@@ -173,6 +193,6 @@ async def upload_pdf(
         return KnowledgeEntryResponse.model_validate(entry)
 
     finally:
-        # Cleanup
+        # Cleanup temporary uploaded file
         if os.path.exists(file_path):
             os.remove(file_path)

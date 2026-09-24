@@ -112,8 +112,8 @@ def get_collection() -> chromadb.Collection:
 # ─── Text Splitter Instance ─────────────────────────────────
 
 text_splitter = RecursiveTextSplitter(
-    chunk_size=500,
-    chunk_overlap=100,
+    chunk_size=1000,
+    chunk_overlap=200,
     separators=["\n\n", "\n", ". ", ", ", " ", ""],
 )
 
@@ -190,10 +190,11 @@ def remove_document(entry_id: int) -> None:
         logger.warning(f"Could not remove chunks for entry {entry_id}: {e}")
 
 
-def query(text: str, n_results: int = 5) -> List[Dict[str, Any]]:
+def query(text: str, n_results: int = 6) -> List[Dict[str, Any]]:
     """
     Query the knowledge base for relevant chunks.
-    Returns list of {content, title, category, score}.
+    Expands context to full document if a specific document matches strongly.
+    Returns list of {content, title, category, score, entry_id}.
     """
     collection = get_collection()
 
@@ -207,18 +208,57 @@ def query(text: str, n_results: int = 5) -> List[Dict[str, Any]]:
         )
 
         chunks = []
+        matched_entry_ids = set()
+
         if results and results["documents"] and results["documents"][0]:
             for i, doc in enumerate(results["documents"][0]):
                 metadata = results["metadatas"][0][i] if results["metadatas"] else {}
                 distance = results["distances"][0][i] if results["distances"] else 1.0
+                score = 1 - distance
+                entry_id = metadata.get("entry_id")
+
                 chunks.append({
                     "content": doc,
                     "title": metadata.get("title", ""),
                     "category": metadata.get("category", ""),
-                    "score": 1 - distance,  # Convert distance to similarity
+                    "score": score,
+                    "entry_id": entry_id,
                 })
+                if score >= 0.4 and entry_id:
+                    matched_entry_ids.add(entry_id)
+
+        # Context Expansion: If an entry has a strong match, fetch all its chunks in order
+        if matched_entry_ids:
+            for strong_entry_id in matched_entry_ids:
+                try:
+                    all_entry_chunks = collection.get(
+                        where={"entry_id": strong_entry_id},
+                        include=["documents", "metadatas"],
+                    )
+                    if all_entry_chunks and all_entry_chunks["documents"]:
+                        # Sort by chunk_index
+                        indexed_docs = sorted(
+                            zip(all_entry_chunks["documents"], all_entry_chunks["metadatas"]),
+                            key=lambda x: x[1].get("chunk_index", 0)
+                        )
+                        combined_doc_text = "\n\n".join([d[0] for d in indexed_docs])
+                        # Prepend full document representation as the top chunk
+                        meta = indexed_docs[0][1]
+                        chunks.insert(0, {
+                            "content": combined_doc_text,
+                            "title": meta.get("title", ""),
+                            "category": meta.get("category", ""),
+                            "score": 0.95,
+                            "entry_id": strong_entry_id,
+                        })
+                except Exception as ex:
+                    logger.debug(f"Context expansion skipped for entry {strong_entry_id}: {ex}")
 
         return chunks
+
+    except Exception as e:
+        logger.error(f"RAG query failed: {e}")
+        return []
 
     except Exception as e:
         logger.error(f"RAG query failed: {e}")

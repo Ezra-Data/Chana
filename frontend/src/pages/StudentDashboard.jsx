@@ -148,32 +148,16 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
     }
   };
 
-  // Load chat history from backend on first mount if empty
+  // On mount: always start fresh — welcome message, new session lazily on first message
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await api.get('/chat/history');
-        // Only set sessionId if we got a real one (null means new user)
-        if (res.data?.session_id) {
-          setSessionId(res.data.session_id);
-        }
-        if (res.data?.messages && res.data.messages.length > 0) {
-          setMessages(res.data.messages);
-        } else if (!messages || messages.length === 0) {
-          setMessages([{
-            id: 'welcome',
-            role: 'assistant',
-            content: "👋 Hi there! I'm Chana, your university Chatbot & Navigation assistant. I can help you with:\n\n• **Campus information** — timetables, fees, rules, procedures\n• **Finding locations** — head to the Campus Map tab to explore\n• **Reporting issues** — complaints are tracked with a ticket ID\n• **Checking ticket status** — just ask about your ticket\n\nHow can I help you today?",
-            timestamp: new Date().toISOString(),
-          }]);
-        }
-      } catch (err) {
-        console.error('Failed to load chat history:', err);
-      }
-    };
-
     if (!messages || messages.length === 0) {
-      fetchHistory();
+      setMessages([{
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: "👋 Hi there! I'm Chana, your university Chatbot & Navigation assistant. I can help you with:\n\n• **Campus information** — timetables, fees, rules, procedures\n• **Finding locations** — head to the Campus Map tab to explore\n• **Reporting issues** — complaints are tracked with a ticket ID\n• **Checking ticket status** — just ask about your ticket\n\nHow can I help you today?",
+        timestamp: new Date().toISOString(),
+      }]);
+      setSessionId(null); // session created lazily on first real message
     }
     fetchSessions();
   }, []);
@@ -230,7 +214,6 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
 
       setMessages(prev => [...prev, botResponse]);
       setSessionId(response.data.session_id);
-      fetchSessions();
     } catch (err) {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
@@ -251,6 +234,9 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
     }
   };
 
+  // Only previous/archived sessions should appear in Past Chats — never the current live one
+  const pastSessions = sessions.filter(s => s.id !== sessionId);
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Chat header toolbar */}
@@ -258,7 +244,7 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="text-xs font-semibold text-campus-800">Chana Active</span>
-          <span className="text-[11px] text-gray-400">• Chats saved in real-time</span>
+          <span className="text-[11px] text-gray-400">• Current conversation</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -269,7 +255,7 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
             title="View previous conversations"
           >
             <Clock className="w-3.5 h-3.5 text-campus-600" />
-            <span>Past Chats {sessions.length > 0 ? `(${sessions.length})` : ''}</span>
+            <span>Past Chats {pastSessions.length > 0 ? `(${pastSessions.length})` : ''}</span>
           </button>
           <button
             onClick={handleNewChat}
@@ -294,11 +280,11 @@ function ChatTab({ onNavigate, messages, setMessages, sessionId, setSessionId })
           </div>
           {loadingSessions ? (
             <div className="py-4 text-center"><Loader2 className="w-4 h-4 animate-spin text-campus-600 mx-auto" /></div>
-          ) : sessions.length === 0 ? (
-            <p className="text-xs text-gray-400 py-3 text-center">No previous conversations yet.</p>
+          ) : pastSessions.length === 0 ? (
+            <p className="text-xs text-gray-400 py-3 text-center">No previous conversations yet. Closed chats appear here after you start a new chat or log out.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {sessions.map((sess) => (
+              {pastSessions.map((sess) => (
                 <div
                   key={sess.id}
                   className={`relative group text-left p-2.5 rounded-xl border text-xs flex flex-col justify-between transition-all ${
@@ -1041,18 +1027,13 @@ function TicketsTab({ initialTicketId }) {
   );
 }
 
-// ─── Navigation Tab ─────────────────────────────────────────
+// ─── Navigation Tab (360° Virtual Tour only) ────────────────
 
-function NavigationTab({ initialScene, initialName }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedNode, setSelectedNode] = useState(initialName ? { name: initialName, panoee_scene_id: initialScene } : null);
-  const [searching, setSearching] = useState(false);
+function NavigationTab() {
   const [panoeeUrl, setPanoeeUrl] = useState('');
   const [loadingTour, setLoadingTour] = useState(true);
 
   useEffect(() => {
-    // Fetch active tour configured by administration
     const normalizeTourUrl = (raw) => {
       if (!raw) return '';
       const trimmed = raw.trim();
@@ -1082,121 +1063,15 @@ function NavigationTab({ initialScene, initialName }) {
     fetchTour();
   }, []);
 
-  useEffect(() => {
-    if (initialScene && initialName) {
-      setSelectedNode({ name: initialName, panoee_scene_id: initialScene });
-    }
-  }, [initialScene, initialName]);
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const response = await api.get(`/navigation/search?q=${encodeURIComponent(searchQuery)}`);
-      setSearchResults(response.data);
-    } catch (err) {
-      console.error('Search failed:', err);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const selectLocation = (node) => {
-    setSelectedNode(node);
-    setSearchResults([]);
-    setSearchQuery('');
-  };
-
   return (
-    <div className="flex flex-col h-full relative">
-      {/* Search & Tour Toolbar */}
-      <div className="p-4 border-b border-cream-200 bg-white/70 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold text-campus-700">Campus Map & Virtual Tour</h2>
-          <p className="text-xs text-gray-500">Search database locations or explore the 360° virtual tour</p>
-        </div>
-      </div>
-
-      {/* Location Search Bar */}
-      <div className="p-4 bg-white/40 border-b border-cream-200">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              id="nav-search"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Search for campus buildings, offices, or labs..."
-              className="input-field pl-10"
-            />
-          </div>
-          <button onClick={handleSearch} disabled={searching} className="btn-primary px-4">
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          </button>
-        </div>
-
-        {/* Search results dropdown */}
-        {searchResults.length > 0 && (
-          <div className="mt-2 bg-white rounded-xl shadow-card border border-cream-200 overflow-hidden">
-            {searchResults.map((node) => (
-              <button
-                key={node.id}
-                onClick={() => selectLocation(node)}
-                className="w-full text-left px-4 py-3 hover:bg-campus-50 transition-colors border-b border-cream-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-campus-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{node.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {node.building}{node.floor ? ` • ${node.floor}` : ''}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Selected location info banner */}
-      {selectedNode && (
-        <div className="px-4 py-3 bg-campus-50 border-b border-campus-200 animate-fade-in flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <MapPin className="w-4 h-4 text-campus-600" />
-              <span className="text-sm font-semibold text-campus-800">{selectedNode.name}</span>
-              {selectedNode.building && (
-                <span className="text-xs bg-campus-100 text-campus-700 px-2 py-0.5 rounded-full font-medium">
-                  {selectedNode.building}{selectedNode.floor ? ` • Floor ${selectedNode.floor}` : ''}
-                </span>
-              )}
-            </div>
-            {selectedNode.description && (
-              <p className="text-xs text-gray-600 mt-1 ml-6">{selectedNode.description}</p>
-            )}
-            <p className="text-[11px] text-campus-700/90 mt-1.5 ml-6 font-medium">
-              💡 <b>Floorplan Wayfinding:</b> Use the floorplan pins and hotspots inside the 360° tour to navigate to this location.
-            </p>
-          </div>
-          <button
-            onClick={() => setSelectedNode(null)}
-            className="text-xs text-gray-400 hover:text-gray-600 ml-2"
-          >
-            ✕ Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* Tour Display or Thoughtful Student-Facing Empty State */}
+    <div className="flex flex-col h-full relative overflow-hidden bg-gray-950">
+      {/* 360° Virtual Tour */}
       {loadingTour ? (
-        <div className="flex-1 flex items-center justify-center p-6 bg-cream-50">
+        <div className="flex-1 flex items-center justify-center bg-gray-950">
           <Loader2 className="w-8 h-8 text-campus-500 animate-spin" />
         </div>
       ) : panoeeUrl ? (
-        <div className="flex-1 bg-gray-900 relative">
+        <div className="absolute inset-0">
           <iframe
             src={panoeeUrl}
             width="100%"
@@ -1272,8 +1147,8 @@ export default function StudentDashboard() {
       {/* Top Navbar */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-cream-200 px-4 py-3 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-campus-700 to-campus-500 rounded-xl flex items-center justify-center">
-            <Bot className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-cream-200">
+            <img src="/chana_logo.png" alt="Chana" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-campus-700 leading-tight">Chana</h1>
@@ -1324,7 +1199,7 @@ export default function StudentDashboard() {
           <TicketsTab initialTicketId={ticketToOpen} />
         )}
         {activeTab === 'navigation' && (
-          <NavigationTab initialScene={navScene} initialName={navName} />
+          <NavigationTab />
         )}
       </div>
     </div>

@@ -145,8 +145,8 @@ export default function AgentDashboard() {
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-xl border-b border-cream-200 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-campus-700 to-campus-500 rounded-xl flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-cream-200">
+              <img src="/chana_logo.png" alt="Chana" className="w-8 h-8 object-contain" />
             </div>
             <div>
               <h1 className="font-display text-lg font-bold text-campus-700 leading-tight">Chana Support Portal</h1>
@@ -273,8 +273,8 @@ export default function AgentDashboard() {
       {studentModal && <StudentInfoModal />}
       <header className="bg-white/80 backdrop-blur-xl border-b border-cream-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-campus-700 to-campus-500 rounded-xl flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-cream-200">
+            <img src="/chana_logo.png" alt="Chana" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-campus-700">Chana Support Portal</h1>

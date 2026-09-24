@@ -4,7 +4,8 @@ import api from '../utils/api';
 import {
   LogOut, Settings, BookOpen, MapPin, Users, Ticket, BarChart3,
   Plus, Trash2, Edit3, Save, X, Upload, Loader2, Eye, EyeOff,
-  ChevronDown, RefreshCw, AlertCircle, Compass, CheckCircle, GraduationCap
+  ChevronDown, RefreshCw, AlertCircle, Compass, CheckCircle, GraduationCap,
+  FileText, CheckCircle2
 } from 'lucide-react';
 
 // ─── KB Manager Tab ────────────────────────────────────────
@@ -16,6 +17,14 @@ function KBManager() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ category: '', title: '', content: '' });
   const [saving, setSaving] = useState(false);
+
+  // PDF Upload Modal State
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  const [pdfForm, setPdfForm] = useState({ title: '', category: 'academics', summary: '' });
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -33,15 +42,21 @@ function KBManager() {
     try {
       if (editingId) {
         await api.put(`/knowledge/${editingId}`, form);
+        setSuccessMsg('Knowledge entry updated and re-embedded successfully!');
       } else {
         await api.post('/knowledge', form);
+        setSuccessMsg('New knowledge entry added and embedded successfully!');
       }
       setForm({ category: '', title: '', content: '' });
       setShowForm(false);
       setEditingId(null);
       fetchEntries();
-    } catch (err) { console.error(err); }
-    finally { setSaving(false); }
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEdit = (entry) => {
@@ -54,48 +69,239 @@ function KBManager() {
     if (!confirm('Delete this entry? This also removes it from the AI knowledge base.')) return;
     try {
       await api.delete(`/knowledge/${id}`);
+      setSuccessMsg('Entry deleted and removed from AI embeddings.');
       fetchEntries();
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) { console.error(err); }
   };
 
-  const handlePdfUpload = async (e) => {
+  // Called when user selects a file from the file picker
+  const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Please select a valid PDF file.');
+      return;
+    }
+    // Clean default title from filename
+    const cleanTitle = file.name
+      .replace(/\.pdf$/i, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+
+    setSelectedPdf(file);
+    setPdfForm({
+      title: cleanTitle,
+      category: 'academics',
+      summary: '',
+    });
+    setUploadError('');
+    setPdfModalOpen(true);
+    // Reset file input so same file can be picked again if desired
+    e.target.value = '';
+  };
+
+  const submitPdfUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedPdf) return;
+    if (!pdfForm.title.trim()) {
+      setUploadError('Please provide a document title.');
+      return;
+    }
+
+    setUploadingPdf(true);
+    setUploadError('');
+
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('category', 'general');
-    setSaving(true);
+    formData.append('file', selectedPdf);
+    formData.append('title', pdfForm.title.trim());
+    formData.append('category', pdfForm.category.trim() || 'general');
+    if (pdfForm.summary.trim()) {
+      formData.append('summary', pdfForm.summary.trim());
+    }
+
     try {
       await api.post('/knowledge/upload-pdf', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+      setSuccessMsg(`PDF "${pdfForm.title}" successfully parsed, summarized & embedded into AI Knowledge Base!`);
+      setPdfModalOpen(false);
+      setSelectedPdf(null);
+      setPdfForm({ title: '', category: 'academics', summary: '' });
       fetchEntries();
-    } catch (err) { console.error(err); }
-    finally { setSaving(false); }
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err) {
+      console.error('PDF upload failed:', err);
+      const detail = err.response?.data?.detail;
+      setUploadError(detail || 'Failed to upload and parse PDF. Ensure the file contains readable text.');
+    } finally {
+      setUploadingPdf(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-campus-500 animate-spin" /></div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-bold text-campus-700">Knowledge Base ({entries.length} entries)</h3>
+      {/* Success Notification Banner */}
+      {successMsg && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2.5 animate-slide-up shadow-sm">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <span className="font-medium">{successMsg}</span>
+        </div>
+      )}
+
+      {/* Header & Controls */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="font-display text-lg font-bold text-campus-700">Knowledge Base</h3>
+          <p className="text-xs text-gray-500">Manage documents and reference texts indexed by Chana's AI</p>
+        </div>
         <div className="flex gap-2">
-          <label className="btn-secondary text-sm cursor-pointer flex items-center gap-1.5">
-            <Upload className="w-4 h-4" /> Upload PDF
-            <input type="file" accept=".pdf" onChange={handlePdfUpload} className="hidden" />
+          <label className="btn-secondary text-sm cursor-pointer flex items-center gap-1.5 shadow-xs hover:border-campus-400">
+            <Upload className="w-4 h-4 text-campus-600" />
+            <span>Upload PDF</span>
+            <input type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" />
           </label>
           <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ category: '', title: '', content: '' }); }}
             className="btn-primary text-sm flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> Add Entry
+            <Plus className="w-4 h-4" /> Add Text Entry
           </button>
         </div>
       </div>
 
-      {/* Add/Edit Form */}
+      {/* PDF Upload & Naming Modal */}
+      {pdfModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-cream-200 p-6 w-full max-w-lg animate-slide-up">
+            <button
+              onClick={() => !uploadingPdf && setPdfModalOpen(false)}
+              disabled={uploadingPdf}
+              className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-cream-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-campus-50 rounded-xl flex items-center justify-center border border-campus-200 text-campus-600">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-display font-bold text-campus-800 text-base">Upload Document to Knowledge Base</h4>
+                <p className="text-xs text-gray-500">Configure title and AI context summary before indexing</p>
+              </div>
+            </div>
+
+            {/* Selected File Details */}
+            {selectedPdf && (
+              <div className="p-3 bg-cream-50 border border-cream-200 rounded-xl flex items-center justify-between text-xs text-gray-700 mb-4">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="font-semibold text-campus-800 truncate">{selectedPdf.name}</span>
+                </div>
+                <span className="badge bg-cream-200 text-gray-600 text-[11px] font-mono flex-shrink-0 ml-2">
+                  {(selectedPdf.size / 1024).toFixed(1)} KB
+                </span>
+              </div>
+            )}
+
+            {uploadError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2 mb-4 animate-shake">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
+            <form onSubmit={submitPdfUpload} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Document Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={pdfForm.title}
+                  onChange={(e) => setPdfForm({ ...pdfForm, title: e.target.value })}
+                  placeholder="e.g. Examination Timetable & Rules 2026"
+                  className="input-field text-sm"
+                  disabled={uploadingPdf}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Category
+                </label>
+                <select
+                  value={pdfForm.category}
+                  onChange={(e) => setPdfForm({ ...pdfForm, category: e.target.value })}
+                  className="input-field text-sm bg-white"
+                  disabled={uploadingPdf}
+                >
+                  <option value="academics">Academics & Timetables</option>
+                  <option value="fees">Fees & Financial Rules</option>
+                  <option value="admissions">Admissions & Registration</option>
+                  <option value="rules">Rules & Disciplinary Policies</option>
+                  <option value="facilities">Campus Facilities & Hostels</option>
+                  <option value="general">General University Information</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase">
+                    What is this PDF about? (AI Scope & Summary)
+                  </label>
+                  <span className="text-[10px] text-campus-600 font-medium">Recommended for accuracy</span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={pdfForm.summary}
+                  onChange={(e) => setPdfForm({ ...pdfForm, summary: e.target.value })}
+                  placeholder="e.g. Contains end-of-semester exam dates, regulations regarding permitted calculators, clearance procedures, and appeal deadlines. Students asking about exam schedules, fees clearance, or appeals should reference this."
+                  className="input-field text-xs resize-y"
+                  disabled={uploadingPdf}
+                />
+                <p className="text-[11px] text-gray-400 mt-1 leading-normal">
+                  💡 <strong>Why this matters:</strong> Chana uses this summary to immediately know what questions this PDF answers without needing to parse the entire text for every query.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-cream-200">
+                <button
+                  type="button"
+                  onClick={() => setPdfModalOpen(false)}
+                  disabled={uploadingPdf}
+                  className="btn-ghost text-xs px-3 py-2 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingPdf}
+                  className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
+                >
+                  {uploadingPdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Extracting Text & Embedding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload & Index Document</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Text Form */}
       {showForm && (
         <div className="card p-5 animate-slide-up space-y-3">
-          <h4 className="font-semibold text-campus-700">{editingId ? 'Edit Entry' : 'New Entry'}</h4>
+          <h4 className="font-semibold text-campus-700">{editingId ? 'Edit Entry' : 'New Text Entry'}</h4>
           <div className="grid grid-cols-2 gap-3">
             <input value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
               placeholder="Category (e.g., academic, fees)" className="input-field" />
@@ -117,25 +323,37 @@ function KBManager() {
 
       {/* Entries list */}
       <div className="space-y-2">
-        {entries.map(entry => (
-          <div key={entry.id} className="card p-4 flex items-start justify-between group">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="badge bg-campus-50 text-campus-700">{entry.category}</span>
-                <h4 className="text-sm font-semibold text-gray-800">{entry.title}</h4>
-              </div>
-              <p className="text-xs text-gray-500 line-clamp-2">{entry.content}</p>
-            </div>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-3">
-              <button onClick={() => handleEdit(entry)} className="p-2 hover:bg-cream-200 rounded-lg transition-colors">
-                <Edit3 className="w-4 h-4 text-gray-500" />
-              </button>
-              <button onClick={() => handleDelete(entry.id)} className="p-2 hover:bg-red-50 rounded-lg transition-colors">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
-            </div>
+        {entries.length === 0 ? (
+          <div className="card p-8 text-center text-gray-400">
+            <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm">No knowledge entries found. Add a text entry or upload a PDF above.</p>
           </div>
-        ))}
+        ) : (
+          entries.map(entry => (
+            <div key={entry.id} className="card p-4 flex items-start justify-between group hover:border-campus-300 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="badge bg-campus-50 text-campus-700">{entry.category}</span>
+                  <h4 className="text-sm font-semibold text-gray-800">{entry.title}</h4>
+                  {entry.source_doc && (
+                    <span className="badge bg-cream-100 text-gray-600 text-[10px] flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-campus-600" /> {entry.source_doc}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{entry.content}</p>
+              </div>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-3 flex-shrink-0">
+                <button onClick={() => handleEdit(entry)} className="p-2 hover:bg-cream-200 rounded-lg transition-colors cursor-pointer" title="Edit entry">
+                  <Edit3 className="w-4 h-4 text-gray-500" />
+                </button>
+                <button onClick={() => handleDelete(entry.id)} className="p-2 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete entry">
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -905,7 +1123,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
-    { id: 'navigation', label: 'Nav Nodes', icon: MapPin },
+    { id: 'navigation', label: '360° Virtual Tour', icon: Compass },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'students', label: 'Students', icon: GraduationCap },
     { id: 'tickets', label: 'Tickets', icon: Ticket },
@@ -917,11 +1135,11 @@ export default function AdminDashboard() {
       <aside className="w-64 bg-white border-r border-cream-200 flex flex-col">
         <div className="p-5 border-b border-cream-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-campus-700 to-campus-500 rounded-xl flex items-center justify-center">
-              <Settings className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-cream-200">
+              <img src="/chana_logo.png" alt="Chana" className="w-8 h-8 object-contain" />
             </div>
             <div>
-              <h1 className="font-display text-base font-bold text-campus-700">Chana Admin Panel</h1>
+              <h1 className="font-display text-base font-bold text-campus-700">Chana Admin</h1>
               <p className="text-[11px] text-gray-400">{user?.name}</p>
             </div>
           </div>

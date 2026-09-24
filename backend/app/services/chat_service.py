@@ -404,25 +404,36 @@ async def process_message(
 
     # ─── Step 3: Route by Intent (6-Way Flow) ─────────────────
 
-    # 1. intent == "clarify" -> show student clarify_question, stop.
+    # 1. intent == "clarify" -> check if ChromaDB has a matching document first!
     if intent == "clarify":
-        clarify_text = clarify_question or "I want to make sure I understand correctly. Could you clarify — are you asking about campus policies, reporting an issue, looking for a location on campus, or checking on a ticket?"
-        bot_msg = ChatMessage(
-            session_id=session.id,
-            role="assistant",
-            content=clarify_text,
-            intent="clarify",
-        )
-        db.add(bot_msg)
-        await db.flush()
-        return {
-            "message": clarify_text,
-            "intent": "clarify",
-            "confidence": confidence,
-            "session_id": session.id,
-            "metadata": None,
-            "is_fallback": False,
-        }
+        # Check if the knowledge base contains relevant information matching this query.
+        # This ensures inquiries about uploaded CVs, personnel profiles, or specific documents
+        # are never falsely blocked by the classifier.
+        rag_probe = rag_service.query(message, n_results=4)
+        has_strong_rag_match = rag_probe and any(c.get("score", 0) >= 0.35 for c in rag_probe)
+
+        if has_strong_rag_match:
+            logger.info("Clarify overruled by strong RAG match (score >= 0.35). Promoting to FAQ.")
+            intent = "faq"
+            confidence = 0.85
+        else:
+            clarify_text = clarify_question or "I want to make sure I understand correctly. Could you clarify — are you asking about campus policies, reporting an issue, looking for a location on campus, or checking on a ticket?"
+            bot_msg = ChatMessage(
+                session_id=session.id,
+                role="assistant",
+                content=clarify_text,
+                intent="clarify",
+            )
+            db.add(bot_msg)
+            await db.flush()
+            return {
+                "message": clarify_text,
+                "intent": "clarify",
+                "confidence": confidence,
+                "session_id": session.id,
+                "metadata": None,
+                "is_fallback": False,
+            }
 
     # 2. intent == "sensitive" -> skip Call 2 entirely, auto-create ticket, give tracking ID
     elif intent == "sensitive":

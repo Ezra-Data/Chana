@@ -14,9 +14,23 @@ export function SocketProvider({ children }) {
   const connect = useCallback(() => {
     if (!token || wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const ws = new WebSocket(`${protocol}//${host}/ws?token=${token}`);
+    let wsUrl;
+    const rawApi = import.meta.env.VITE_API_URL;
+    if (rawApi) {
+      try {
+        const parsed = new URL(rawApi);
+        const wsProtocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${wsProtocol}//${parsed.host}/ws?token=${token}`;
+      } catch {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
+      }
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      wsUrl = `${protocol}//${host}/ws?token=${token}`;
+    }
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       setConnected(true);

@@ -39,8 +39,8 @@ export default function StaffLoginPage() {
     <div className="auth-bg relative flex items-center justify-center min-h-screen p-4">
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 shadow-lg border border-white/30">
-            <Shield className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl mb-4 shadow-lg border border-white/40 p-2 overflow-hidden">
+            <img src="/chana_logo.png" alt="Chana" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="font-display text-3xl font-bold text-white tracking-tight">Chana Staff Portal</h1>
           <p className="text-campus-100/90 mt-1 text-sm">Support Agent & System Administrator Access</p>
