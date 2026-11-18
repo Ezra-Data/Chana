@@ -40,9 +40,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd frontend
 npm install
 npm run dev
-```
-
-The app will be available at **http://localhost:5173**
+``
 
 ## 👥 Demo Accounts
 
